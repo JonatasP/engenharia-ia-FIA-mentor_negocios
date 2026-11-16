@@ -16,7 +16,7 @@ import gradio as gr
 
 from mentor.agente import AgenteMentor
 from mentor.config import carregar_config
-from mentor.equipe import criar_equipe, executar_equipe
+from mentor.equipe import acompanhar_equipe, criar_equipe, proxima_etapa
 from mentor.kb import BaseConhecimento
 from mentor.llm import LLM
 from mentor import plano
@@ -56,18 +56,32 @@ def conversar(mensagem, historico, kb_sessao):
 
 
 # ---------- Aba 2: Press release ----------
-def _saida_equipe(estado):
-    status = "Aprovado pelo revisor." if estado.get("aprovado") else "Limite de rodadas atingido; revise os ajustes pendentes."
-    bastidores = "\n".join(f"- {e}" for e in estado.get("historico", []))
-    bastidores += f"\n\n**Último parecer do revisor:**\n\n{estado.get('parecer', '')}"
-    return estado.get("rascunho", ""), f"{status}\n\n{bastidores}", estado
+def _bastidores_equipe(estado) -> str:
+    texto = "\n".join(f"- {e}" for e in estado.get("historico", [])) or "- (nenhuma etapa concluída ainda)"
+    if estado.get("parecer"):
+        texto += f"\n\n**Último parecer do revisor:**\n\n{estado['parecer']}"
+    return texto
+
+
+def _rodar_equipe(pedido, kb_sessao, anterior=None, feedback=""):
+    """Gerador: atualiza a tela após cada nó do grafo (pesquisador, redator, revisor)."""
+    equipe = criar_equipe(AgenteMentor(llm, kb_atual(kb_sessao), cfg), llm, cfg.max_revisoes)
+    estado = None
+    for estado in acompanhar_equipe(equipe, pedido, anterior, feedback):
+        status = f"**Em andamento.** {proxima_etapa(estado, cfg.max_revisoes)} O processo leva de 1 a 3 minutos."
+        yield status, estado.get("rascunho", ""), _bastidores_equipe(estado), anterior
+
+    if estado.get("aprovado"):
+        status = f"**Concluído:** aprovado pelo revisor na rodada {estado['rodada']}."
+    else:
+        status = "**Concluído:** limite de rodadas atingido. Veja os ajustes pendentes nos bastidores."
+    yield status, estado.get("rascunho", ""), _bastidores_equipe(estado), estado
 
 
 def gerar_press_release(pedido, kb_sessao):
     if not pedido.strip():
         raise gr.Error("Descreva o que a equipe deve escrever.")
-    equipe = criar_equipe(AgenteMentor(llm, kb_atual(kb_sessao), cfg), llm, cfg.max_revisoes)
-    return _saida_equipe(executar_equipe(equipe, pedido))
+    yield from _rodar_equipe(pedido, kb_sessao)
 
 
 def revisar_press_release(feedback, estado, kb_sessao):
@@ -75,14 +89,14 @@ def revisar_press_release(feedback, estado, kb_sessao):
         raise gr.Error("Gere um press release primeiro.")
     if not feedback.strip():
         raise gr.Error("Escreva os ajustes desejados.")
-    equipe = criar_equipe(AgenteMentor(llm, kb_atual(kb_sessao), cfg), llm, cfg.max_revisoes)
-    return _saida_equipe(executar_equipe(equipe, estado["pedido"], anterior=estado, feedback=feedback))
+    yield from _rodar_equipe(estado["pedido"], kb_sessao, anterior=estado, feedback=feedback)
 
 
 # ---------- Aba 3: Plano de negócio (Plan-and-Execute) ----------
 def gerar_plano(pedido, kb_sessao):
     if not pedido.strip():
         raise gr.Error("Descreva o trabalho, por exemplo: Monte o plano de negócio do nosso projeto.")
+    yield "", "**Em andamento.** O planejador está dividindo o trabalho em etapas.", None
     agente = AgenteMentor(llm, kb_atual(kb_sessao), cfg)
     etapas = plano.planejar(llm, pedido, cfg.negocio)
     yield f"Plano definido em {len(etapas)} etapas. Executando a etapa 1…", plano.bastidores(etapas, []), None
@@ -136,13 +150,15 @@ with gr.Blocks(title=f"Mentor de Negócios — {cfg.negocio}") as demo:
     with gr.Tab("Press release"):
         pedido = gr.Textbox(lines=3, label="Pedido para a equipe", placeholder="Ex.: Escreva o press release de uma nova linha de serviço para frotas corporativas.")
         gerar = gr.Button("Gerar com a equipe", variant="primary")
+        status_equipe = gr.Markdown()
+        with gr.Accordion("Bastidores da equipe", open=True):
+            bastidores_equipe = gr.Markdown()
         press_release = gr.Markdown()
-        with gr.Accordion("Bastidores da equipe", open=False):
-            bastidores = gr.Markdown()
         feedback = gr.Textbox(lines=2, label="Ajustes do grupo (human-in-the-loop)")
         revisar = gr.Button("Gerar nova versão com os ajustes")
-        gerar.click(gerar_press_release, [pedido, kb_sessao], [press_release, bastidores, estado_equipe])
-        revisar.click(revisar_press_release, [feedback, estado_equipe, kb_sessao], [press_release, bastidores, estado_equipe])
+        saidas_equipe = [status_equipe, press_release, bastidores_equipe, estado_equipe]
+        gerar.click(gerar_press_release, [pedido, kb_sessao], saidas_equipe)
+        revisar.click(revisar_press_release, [feedback, estado_equipe, kb_sessao], saidas_equipe)
 
     with gr.Tab("Plano de negócio"):
         gr.Markdown(
@@ -178,4 +194,5 @@ if __name__ == "__main__":
         server_name="0.0.0.0",
         server_port=int(os.getenv("PORT", "7860")),  # o Render define PORT
         auth=(os.getenv("APP_USUARIO", "grupo"), senha) if senha else None,
+        show_error=True,  # mostra a mensagem de erro na tela, em vez de só "Error"
     )
