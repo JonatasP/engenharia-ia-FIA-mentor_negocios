@@ -1,0 +1,14 @@
+# Parametrização do agente do grupo. Copie para a raiz do projeto como grupo.yaml.
+grupo: "Grupo 3"
+negocio: "LAIfe"
+resumo: >
+  Agente de IA que transforma documentos, apresentações, anotações e transcrições do usuário
+  em uma base pesquisável e responde perguntas indicando os trechos de origem.
+publico: "Profissionais, professores e estudantes que trabalham com muitos materiais"
+instrucoes_adicionais: ""
+
+agente:
+  busca_web: true
+  max_iteracoes: 8
+  timeout_segundos: 150
+  max_revisoes: 3

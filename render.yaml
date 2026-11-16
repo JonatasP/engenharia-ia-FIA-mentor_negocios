@@ -1,0 +1,23 @@
+# Blueprint do Render: cria o serviço web a partir deste repositório.
+# No painel do Render: New > Blueprint > selecione o repositório.
+services:
+  - type: web
+    name: mentor-negocios
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
+    autoDeploy: true # cada push no GitHub publica uma nova versão (inclusive da pasta kb/)
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: OPENAI_API_KEY
+        sync: false # o Render pede o valor na criação; nunca vai para o repositório
+      - key: OPENAI_MODEL
+        value: gpt-6-luna
+      - key: OPENAI_EMBEDDING_MODEL
+        value: text-embedding-3-small
+      - key: APP_USUARIO
+        value: grupo
+      - key: APP_SENHA
+        generateValue: true # senha aleatória, visível em Environment no painel

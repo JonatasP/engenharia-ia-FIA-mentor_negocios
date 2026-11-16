@@ -1,0 +1,5 @@
+# Dependências extras dos scripts da aula (rodam no computador do aluno, não no Render).
+-r requirements.txt
+smolagents[openai]>=1.20
+mcp>=2.3,<3
+pytest>=8.0

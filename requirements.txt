@@ -1,0 +1,8 @@
+# Dependências do app publicado no Render (enxutas: o plano gratuito tem pouca memória).
+openai>=1.66
+gradio>=5.40,<6
+langgraph>=1.0
+numpy>=2.0
+pypdf>=5.0
+PyYAML>=6.0
+python-dotenv>=1.0
