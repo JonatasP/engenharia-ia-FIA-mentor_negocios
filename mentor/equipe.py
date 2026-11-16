@@ -108,7 +108,7 @@ def proxima_etapa(estado: EstadoEquipe, max_revisoes: int) -> str:
     if ultimo.startswith("Redator"):
         return f"O revisor está avaliando a versão (rodada {estado.get('rodada', 0) + 1} de no máximo {max_revisoes})."
     if estado.get("aprovado") or estado.get("rodada", 0) >= max_revisoes:
-        return "A equipe está finalizando."
+        return "A equipe de agentes está finalizando."
     return "O redator está aplicando os ajustes pedidos pelo revisor."
 
 
