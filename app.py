@@ -2,7 +2,7 @@
 
 Abas:
 1. Mentor: conversa com o agente, com o trace das ferramentas usadas.
-2. Press release: equipe pesquisador → redator → revisor, com ajustes do grupo (human-in-the-loop).
+2. Press release: equipe de agentes pesquisador → redator → revisor, com ajustes do grupo (human-in-the-loop).
 3. Plano de negócio: Plan-and-Execute para trabalhos amplos, executados em etapas.
 4. Base de conhecimento: documentos do repositório e envio temporário de arquivos.
 """
@@ -80,7 +80,7 @@ def _rodar_equipe(pedido, kb_sessao, anterior=None, feedback=""):
 
 def gerar_press_release(pedido, kb_sessao):
     if not pedido.strip():
-        raise gr.Error("Descreva o que a equipe deve escrever.")
+        raise gr.Error("Descreva o que a equipe de agentes deve escrever.")
     yield from _rodar_equipe(pedido, kb_sessao)
 
 
@@ -148,10 +148,10 @@ with gr.Blocks(title=f"Mentor de Negócios — {cfg.negocio}") as demo:
         entrada.submit(conversar, [entrada, chat, kb_sessao], [chat, entrada, trace])
 
     with gr.Tab("Press release"):
-        pedido = gr.Textbox(lines=3, label="Pedido para a equipe", placeholder="Ex.: Escreva o press release de uma nova linha de serviço para frotas corporativas.")
-        gerar = gr.Button("Gerar com a equipe", variant="primary")
+        pedido = gr.Textbox(lines=3, label="Pedido para a equipe de agentes", placeholder="Ex.: Escreva o press release de uma nova linha de serviço para frotas corporativas.")
+        gerar = gr.Button("Gerar com a equipe de agentes", variant="primary")
         status_equipe = gr.Markdown()
-        with gr.Accordion("Bastidores da equipe", open=True):
+        with gr.Accordion("Bastidores da equipe de agentes", open=True):
             bastidores_equipe = gr.Markdown()
         press_release = gr.Markdown()
         feedback = gr.Textbox(lines=2, label="Ajustes do grupo (human-in-the-loop)")
