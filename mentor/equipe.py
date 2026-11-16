@@ -76,12 +76,40 @@ def criar_equipe(agente, llm, max_revisoes: int):
     return grafo.compile()
 
 
-def executar_equipe(equipe, pedido: str, anterior: EstadoEquipe | None = None, feedback: str = "") -> EstadoEquipe:
-    """Primeira execução: só o pedido. Revisão humana: reaproveita a pesquisa e o rascunho anteriores."""
+def acompanhar_equipe(equipe, pedido: str, anterior: EstadoEquipe | None = None, feedback: str = ""):
+    """Executa o grafo e devolve (via yield) o estado após cada nó, para a interface mostrar o andamento.
+
+    Primeira execução: só o pedido. Revisão humana: reaproveita a pesquisa e o rascunho anteriores.
+    """
     estado: EstadoEquipe = {"pedido": pedido, "rodada": 0, "historico": []}
     if anterior and feedback:
         estado.update(pesquisa=anterior["pesquisa"], rascunho=anterior["rascunho"], feedback_humano=feedback)
-    return equipe.invoke(estado)
+    yield from equipe.stream(estado, stream_mode="values")
+
+
+def executar_equipe(equipe, pedido: str, anterior: EstadoEquipe | None = None, feedback: str = "") -> EstadoEquipe:
+    """Executa o grafo até o fim e devolve só o estado final."""
+    final = None
+    for final in acompanhar_equipe(equipe, pedido, anterior, feedback):
+        pass
+    return final
+
+
+def proxima_etapa(estado: EstadoEquipe, max_revisoes: int) -> str:
+    """Descreve, para o aluno, o que a equipe está fazendo agora."""
+    historico = estado.get("historico", [])
+    if not historico:
+        if estado.get("feedback_humano"):
+            return "O redator está escrevendo uma nova versão com os ajustes do grupo."
+        return "O pesquisador está consultando a base de conhecimento e a web."
+    ultimo = historico[-1]
+    if ultimo.startswith("Pesquisador"):
+        return "O redator está escrevendo a primeira versão."
+    if ultimo.startswith("Redator"):
+        return f"O revisor está avaliando a versão (rodada {estado.get('rodada', 0) + 1} de no máximo {max_revisoes})."
+    if estado.get("aprovado") or estado.get("rodada", 0) >= max_revisoes:
+        return "A equipe está finalizando."
+    return "O redator está aplicando os ajustes pedidos pelo revisor."
 
 
 def _registrar(estado: EstadoEquipe, evento: str) -> list[str]:
