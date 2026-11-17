@@ -59,7 +59,7 @@ class AgenteMentor:
         itens = list(historico or []) + [{"role": "user", "content": pergunta}]
         limites = Limites(self.cfg.max_iteracoes, self.cfg.timeout_segundos)
         trace: list[Passo] = []
-
+-
         iteracao = 0
         while not limites.esgotado(iteracao):
             iteracao += 1
